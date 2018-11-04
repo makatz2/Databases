@@ -44,10 +44,35 @@ BufMgr::~BufMgr() {
 
 void BufMgr::advanceClock()
 {
+	clockHand = clokcHand++;
+	clockHand = clockHand%numBufs;
 }
 
 void BufMgr::allocBuf(FrameId & frame) 
 {
+	int numFramesChecked = 0;
+	while(numFramesChecked < numBufs){
+		numFramesChecked++;
+		advanceClock();
+		if(bufDescTable[clockHand].valid != false){
+			if(bufDescTable[clockHand].refbit == true){
+				refbit = false;
+				continue;
+			}else{
+				if(bufDescTable[clockHand].pinCount == 0){
+					if(bufDescTable[clockHand].dirty == true){
+						bufDescTable[clockHand].file->writePage(bufDescTable[clockHand].pageNo);
+						hashTable.remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+						bufDescTable[clockHand].clear();
+					}	
+				}else{
+					continue;
+				}
+			}
+		}
+		set(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+		frame = bufDescTable[clockHand].frameNo;	
+	}
 }
 
 	
@@ -88,11 +113,22 @@ void BufMgr::flushFile(const File* file)
 
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page) 
 {
-}
+	Page newPage = file->allocatePage();
+	FrameID *newFrame;
+	allocBuf(newFrame);
+	hashTable.insert(file, pageNo, newFrame);
+	page
+}	
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
     
+	int *tempFrameNo = -1;
+	hashTable->lookup(file, pageNp, tempFrameNo);
+	if(tempFrameNo != -1){
+		bufDescTbl->clear() 
+	}
+	file->deletePage(PageNo);
 }
 
 void BufMgr::printSelf(void) 
