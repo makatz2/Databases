@@ -1,4 +1,8 @@
 /**
+ * Name: Michael Katz, ID: 9070102042
+ * Name: Emmet Ryan, ID: 9069927185
+ * Name: 
+ *
  * @author See Contributors.txt for code contributors and overview of BadgerDB.
  *
  * @section LICENSE
@@ -80,6 +84,28 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 
 void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty) 
 {
+    FrameId fid = -1;
+    // Check if the frame is in the hashtable
+    try{
+        hashTable->lookup(file, pageNo, fid);
+        // Frame found. Check pin count to check for 0.
+        int pins = bufDescTable[fid].pinCnt;
+	if(pins == 0){
+            // Pin count is already 0. Throw PAGENOTPINNED exception.
+	    throw PageNotPinnedException(file->filename(), pageNo, fid);
+            break;
+	}
+	//Pin value is not 0. Decrement by 1.
+	bufDescTable[fid].pinCnt--;
+	// Check dirty boolean and set if true
+	if(dirty){
+            bufDescTable[fid].dirty = true;
+	}
+    }
+    catch(HashNotFoundException e){
+        // Do nothing if hash is not found
+	return;
+    }
 }
 
 void BufMgr::flushFile(const File* file) 
