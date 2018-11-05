@@ -40,33 +40,34 @@ BufMgr::~BufMgr() {
 
 void BufMgr::advanceClock()
 {
-	clockHand = clokcHand++;
+	clockHand = clockHand + 1;
 	clockHand = clockHand%numBufs;
 }
 
 void BufMgr::allocBuf(FrameId & frame) 
 {
-	int numFramesChecked = 0;
+	uint32_t  numFramesChecked = 0;
 	while(numFramesChecked < numBufs){
 		numFramesChecked++;
 		advanceClock();
 		if(bufDescTable[clockHand].valid != false){
 			if(bufDescTable[clockHand].refbit == true){
-				refbit = false;
+				bufDescTable[clockHand].refbit = false;
 				continue;
 			}else{
-				if(bufDescTable[clockHand].pinCount == 0){
+				if(bufDescTable[clockHand].pinCnt == 0){
 					if(bufDescTable[clockHand].dirty == true){
-						bufDescTable[clockHand].file->writePage(bufDescTable[clockHand].pageNo);
-						hashTable.remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
-						bufDescTable[clockHand].clear();
+						bufDescTable[clockHand].file->writePage(bufPool[clockHand]);
+						hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+						bufDescTable[clockHand].Clear();
 					}	
 				}else{
 					continue;
 				}
 			}
 		}
-		set(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+
+		bufDescTable->Set(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
 		frame = bufDescTable[clockHand].frameNo;	
 	}
 }
@@ -87,22 +88,23 @@ void BufMgr::flushFile(const File* file)
 
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page) 
 {
-	Page newPage = file->allocatePage();
-	FrameID *newFrame;
+	page = &file->allocatePage();
+	pageNo = page->page_number();
+	FrameId newFrame;
 	allocBuf(newFrame);
-	hashTable.insert(file, pageNo, newFrame);
-	page
+	hashTable->insert(file, pageNo, newFrame);
+	bufDescTable->Set(file, pageNo);
 }	
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
     
-	int *tempFrameNo = -1;
-	hashTable->lookup(file, pageNp, tempFrameNo);
-	if(tempFrameNo != -1){
-		bufDescTbl->clear() 
-	}
-	file->deletePage(PageNo);
+	//int *tempFrameNo = -1;
+	//hashTable->lookup(file, pageNp, tempFrameNo);
+	//if(tempFrameNo != -1){
+	//	bufDescTbl->clear() 
+	//}
+	//file->deletePage(PageNo);
 }
 
 void BufMgr::printSelf(void) 
