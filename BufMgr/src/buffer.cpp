@@ -166,7 +166,7 @@ void BufMgr::disposePage(File* file, const PageId PageNo)
 	FrameId fid = -1;
 	// First make sure page is allocated a frame in the buffer pool
 	try{
-		hashTable->lookup(file, pageNo, fid);
+		hashTable->lookup(file, PageNo, fid);
 		// If true, free the frame in bufDescTable
 		bufDescTable[fid].Clear();
 		// Remove the entry from the hash table
