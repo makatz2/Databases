@@ -122,13 +122,20 @@ void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
-    
-	int *tempFrameNo = -1;
-	hashTable->lookup(file, pageNp, tempFrameNo);
-	if(tempFrameNo != -1){
-		bufDescTbl->clear() 
+	FrameId fid = -1;
+	// First make sure page is allocated a frame in the buffer pool
+	try{
+		hashTable->lookup(file, pageNo, fid);
+		// If true, free the frame in bufDescTable
+		bufDescTable[fid].Clear();
+		// Remove the entry from the hash table
+		hashTable->remove(file, PageNo);
+		// Finally, delete the page from the file itself
+		file->deletePage(PageNo);	
 	}
-	file->deletePage(PageNo);
+	catch(HashNotFoundException e){
+		return;
+	}
 }
 
 void BufMgr::printSelf(void) 
