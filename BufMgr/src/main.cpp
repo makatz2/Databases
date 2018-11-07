@@ -53,7 +53,8 @@ int main()
   }
 
   {
-    // Create a new database file.
+	  std::cout << "Don't Delete this line. Error without this line added" << std::endl;
+   	  // Create a new database file.
     File new_file = File::create(filename);
     
     // Allocate some pages and put data on them.
@@ -176,7 +177,6 @@ void test1()
 		rid[i] = page->insertRecord(tmpbuf);
 		bufMgr->unPinPage(file1ptr, pid[i], true);
 	}
-
 	//Reading pages back...
 	for (i = 0; i < num; i++)
 	{
@@ -203,7 +203,7 @@ void test2()
 		rid2 = page2->insertRecord(tmpbuf);
 
 		int index = random() % num;
-    pageno1 = pid[index];
+    		pageno1 = pid[index];
 		bufMgr->readPage(file1ptr, pageno1, page);
 		sprintf((char*)tmpbuf, "test.1 Page %d %7.1f", pageno1, (float)pageno1);
 		if(strncmp(page->getRecord(rid[index]).c_str(), tmpbuf, strlen(tmpbuf)) != 0)

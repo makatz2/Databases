@@ -44,40 +44,63 @@ BufMgr::~BufMgr() {
 
 void BufMgr::advanceClock()
 {
-	clockHand = clokcHand++;
+	clockHand = clockHand + 1;
 	clockHand = clockHand%numBufs;
 }
 
 void BufMgr::allocBuf(FrameId & frame) 
 {
-	int numFramesChecked = 0;
-	while(numFramesChecked < numBufs){
-		numFramesChecked++;
+	uint32_t  pinnedFrames = 0;
+	while(pinnedFrames <  numBufs){
 		advanceClock();
-		if(bufDescTable[clockHand].valid != false){
-			if(bufDescTable[clockHand].refbit == true){
-				refbit = false;
+		if(bufDescTable[clockHand].valid){
+			if(bufDescTable[clockHand].refbit){
+				bufDescTable[clockHand].refbit = false;
 				continue;
 			}else{
-				if(bufDescTable[clockHand].pinCount == 0){
+				if(bufDescTable[clockHand].pinCnt == 0){
 					if(bufDescTable[clockHand].dirty == true){
-						bufDescTable[clockHand].file->writePage(bufDescTable[clockHand].pageNo);
-						hashTable.remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
-						bufDescTable[clockHand].clear();
+						(bufDescTable[clockHand].file)->writePage(bufPool[clockHand]);
 					}	
+					hashTable->remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
+					bufDescTable[clockHand].Clear();
+					frame = clockHand;
+					break;	
 				}else{
+					pinnedFrames++;
 					continue;
 				}
 			}
+		}else{
+			frame = clockHand;
+			break;	
 		}
-		set(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
-		frame = bufDescTable[clockHand].frameNo;	
+
+	}
+	if(pinnedFrames == numBufs){
+		throw BufferExceededException();
 	}
 }
 
 	
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
+	FrameId fid = -1;
+	try{
+		hashTable->lookup(file, pageNo, fid);
+		// case2-page is in the bufPool
+		bufDescTable[fid].pinCnt++;
+		bufDescTable[fid].refbit = true;
+		page = &bufPool[fid];
+		
+	}catch(HashNotFoundException e){	
+		//case1-page is not in the bufPool
+		allocBuf(fid);
+		bufPool[fid]  = file->readPage(pageNo);
+		hashTable->insert(file, pageNo, fid);
+		bufDescTable[fid].Set(file, pageNo);
+		page = &bufPool[fid];;
+	}
 }
 
 
@@ -88,36 +111,54 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
     try{
         hashTable->lookup(file, pageNo, fid);
         // Frame found. Check pin count to check for 0.
-        int pins = bufDescTable[fid].pinCnt;
-	if(pins == 0){
+	if(bufDescTable[fid].pinCnt == 0){
             // Pin count is already 0. Throw PAGENOTPINNED exception.
 	    throw PageNotPinnedException(file->filename(), pageNo, fid);
-            break;
-	}
-	//Pin value is not 0. Decrement by 1.
-	bufDescTable[fid].pinCnt--;
-	// Check dirty boolean and set if true
-	if(dirty){
-            bufDescTable[fid].dirty = true;
+	}else{
+		//Pin value is not 0. Decrement by 1.
+		bufDescTable[fid].pinCnt--;
+		// Check dirty boolean and set if true
+		if(dirty){
+            		bufDescTable[fid].dirty = true;
+		}
 	}
     }
     catch(HashNotFoundException e){
         // Do nothing if hash is not found
-	return;
     }
 }
 
 void BufMgr::flushFile(const File* file) 
 {
+	for(uint32_t i = 0; i < numBufs; i++){
+		if(bufDescTable[i].file == file){
+			if(bufDescTable[i].pinCnt != 0){
+				throw PagePinnedException(file->filename(),bufDescTable[i].pageNo, i);
+			}
+			if(bufDescTable[i].valid == false){
+				throw BadBufferException(i, bufDescTable[i].dirty, bufDescTable[i].valid, bufDescTable[i].refbit);
+			}
+			if(bufDescTable[i].dirty){
+				(bufDescTable[i].file)->writePage(bufPool[i]);
+				bufDescTable[i].dirty = false;
+			}
+			hashTable->remove(file, bufDescTable[i].pageNo);
+			bufDescTable[i].Clear();
+		}
+	}
+
 }
 
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page) 
 {
-	Page newPage = file->allocatePage();
-	FrameID *newFrame;
-	allocBuf(newFrame);
-	hashTable.insert(file, pageNo, newFrame);
-	page
+	Page tempPage = file->allocatePage();
+	pageNo = tempPage.page_number();
+	FrameId fid;
+	allocBuf(fid);
+	bufPool[fid] = tempPage;
+	bufDescTable[fid].Set(file, pageNo);
+	hashTable->insert(file, pageNo, fid);
+	page = &bufPool[fid];
 }	
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
