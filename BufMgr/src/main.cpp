@@ -53,7 +53,6 @@ int main()
   }
 
   {
-	  std::cout << "Don't Delete this line. Error without this line added" << std::endl;
    	  // Create a new database file.
     File new_file = File::create(filename);
     

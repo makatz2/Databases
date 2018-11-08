@@ -44,18 +44,26 @@ BufMgr::~BufMgr() {
 
 void BufMgr::advanceClock()
 {
+	// Increment the clockhand positiion plus one and then check that we have not passed the last 
+	// index in the buffer by using numBuffs for modular calculation.
 	clockHand = clockHand + 1;
 	clockHand = clockHand%numBufs;
 }
 
 void BufMgr::allocBuf(FrameId & frame) 
 {
+	// create value to be compared with numBuffs
 	uint32_t  pinnedFrames = 0;
+	// while loop that goes through the frames until a replacement frame is found or all frames
+	// are pinned. 
 	while(pinnedFrames <  numBufs){
 		advanceClock();
 		if(bufDescTable[clockHand].valid){
 			if(bufDescTable[clockHand].refbit){
 				bufDescTable[clockHand].refbit = false;
+				// Set Pinned frames to 0 so that pinned frames only = numbufs if 
+				// all the frames are pinned
+				pinnedFrames = 0;
 				continue;
 			}else{
 				if(bufDescTable[clockHand].pinCnt == 0){
@@ -72,6 +80,7 @@ void BufMgr::allocBuf(FrameId & frame)
 				}
 			}
 		}else{
+			// Frame found. Exit loop. 
 			frame = clockHand;
 			break;	
 		}
