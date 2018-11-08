@@ -1,7 +1,7 @@
 /**
  * Name: Michael Katz, ID: 9070102042
  * Name: Emmet Ryan, ID: 9069927185
- * Name: 
+ * Name: Kshitij Kumar, ID: 9079574746 
  *
  * @author See Contributors.txt for code contributors and overview of BadgerDB.
  *
@@ -103,7 +103,13 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 	}
 }
 
-
+/*
+ * This method uses the hashTable lookup function to first check if the page is in the table. If not, it
+ * catches an exception and does nothing. If it is found, checks the pin value from the bufDescTable. Per 
+ * the function guidelines, a PageNotPinned exception is thrown if the pin is already 0. Otherwise, it 
+ * simply decrements the value. Finally, the "dirty" boolean parameter is checked. If true, the dirty bit
+ * in bufDescTable of the found FrameId (fid) is set to true.
+*/
 void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty) 
 {
     FrameId fid = -1;
@@ -161,6 +167,13 @@ void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 	page = &bufPool[fid];
 }	
 
+/*
+ * Per the assignment guidelines, this method deletes a page from a specified file and page number. 
+ * It first tries to lookup the file to ensure the page is allocated a frame in the buffer pool. If
+ * true, it clears the returned frame from the buffer pool, removes the page from the hash table, and
+ * finally removes the page from the file itself. If the lookup fails, a HashNotFound exception is caught
+ * and the method returns.
+*/
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
 	FrameId fid = -1;
